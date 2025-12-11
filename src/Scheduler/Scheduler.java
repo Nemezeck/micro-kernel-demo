@@ -1,3 +1,6 @@
+package Scheduler;
+import Process.Process;
+
 public interface Scheduler {
     void addProcess(Process p);
     Process getNextProcess();

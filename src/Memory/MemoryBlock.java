@@ -1,3 +1,5 @@
+package Memory;
+
 public class MemoryBlock {
     public int start;
     public int size;

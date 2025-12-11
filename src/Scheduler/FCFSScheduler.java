@@ -1,5 +1,9 @@
+package Scheduler;
+
 import java.util.LinkedList;
 import java.util.Queue;
+import Process.Process;
+import Process.PCB;
 
 public class FCFSScheduler implements Scheduler {
 
