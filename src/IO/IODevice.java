@@ -18,8 +18,8 @@ public class IODevice {
         this.currentRequest = request;
         this.remainingTime = request.getDuration();
         this.isBusy = true;
-        System.out.println("  → Device [" + name + "] started " + request.getOperation() +
-                " for PID " + request.getPid() + " (duration: " + request.getDuration() + ")");
+        System.out.println("  → Dispositivo [" + name + "] inició " + request.getOperation() +
+                " para el PID " + request.getPid() + " (duración: " + request.getDuration() + ")");
     }
 
     public IORequest tick() {
@@ -29,8 +29,8 @@ public class IODevice {
 
         if (remainingTime <= 0) {
             isBusy = false;
-            System.out.println("  → Device [" + name + "] completed " + currentRequest.getOperation() +
-                    " for PID " + currentRequest.getPid());
+            System.out.println("  → Dispositivo [" + name + "] completó " + currentRequest.getOperation() +
+                    " para el PID " + currentRequest.getPid());
             IORequest completed = currentRequest;
             currentRequest = null;
             return completed;

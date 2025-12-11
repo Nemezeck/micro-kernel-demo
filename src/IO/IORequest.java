@@ -4,7 +4,7 @@ public class IORequest {
     private int pid;
     private String deviceName;
     private int duration;
-    private String operation; // "READ" or "WRITE"
+    private String operation; // "LEER" o "ESCRIBIR"
 
     public IORequest(int pid, String deviceName, int duration, String operation) {
         this.pid = pid;

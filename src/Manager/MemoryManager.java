@@ -17,7 +17,7 @@ public class MemoryManager {
 
     public MemoryManager(int total) {
         this.totalMemory = total;
-        // Initialize with one big free block
+        // Inicializar con un bloque grande libre
         freeBlocks.put(0, new MemoryBlock(0, total));
     }
 
@@ -25,7 +25,7 @@ public class MemoryManager {
         MemoryBlock bestFit = null;
         int bestBase = -1;
 
-        // Best-fit: find the smallest block that fits
+        // Best-fit: encuentra el bloque más pequeño que encaja
         for (var entry : freeBlocks.entrySet()) {
             MemoryBlock block = entry.getValue();
 
@@ -38,35 +38,35 @@ public class MemoryManager {
         }
 
         if (bestFit == null) {
-            System.out.println("Memory.Memory allocation failed for PID " + pcb.getPid());
+            System.out.println("Fallo la asignación de memoria para el PID " + pcb.getPid());
             return false;
         }
 
-        // Remove the free block
+        // Quitar el bloque libre
         freeBlocks.remove(bestBase);
 
-        // Create allocated block
+        // Crear bloque asignado
         MemoryBlock allocatedBlock = new MemoryBlock(bestBase, size);
         allocated.put(pcb.getPid(), allocatedBlock);
 
-        // Update Process.Process.Process.PCB with memory base address
+        // Actualizar Process.Process.Process.PCB con la dirección base de memoria
         pcb.allocateMemory(bestBase);
 
-        // If there's leftover space, create a new free block
+        // Si hay espacio sobrante, crea un nuevo bloque libre
         if (bestFit.size > size) {
             int newStart = bestBase + size;
             int newSize = bestFit.size - size;
             freeBlocks.put(newStart, new MemoryBlock(newStart, newSize));
         }
 
-        // Simulate writing to actual memory
+        // Simular escritura en memoria real
         for (int i = bestBase; i < bestBase + size; i++) {
-            Memory.mem[i] = pcb.getPid(); // Mark memory as belonging to this process
+            Memory.mem[i] = pcb.getPid(); // Marcar la memoria como perteneciente a este proceso
         }
 
-        System.out.println("Allocated PID " + pcb.getPid() +
-                " → [" + bestBase + "-" + (bestBase + size - 1) +
-                "] (" + size + " units)");
+        System.out.println("Asignado PID " + pcb.getPid() +
+        " → [" + bestBase + "-" + (bestBase + size - 1) +
+        "] (" + size + " unidades)");
         return true;
     }
 
@@ -76,22 +76,22 @@ public class MemoryManager {
 
         MemoryBlock block = allocated.remove(pid);
 
-        // Clear the actual memory
+        // Borrar la memoria actual
         for (int i = block.start; i < block.start + block.size; i++) {
             Memory.mem[i] = 0;
         }
 
-        // Update Process.Process.Process.PCB
+        // Proceso de actualización.Proceso.Proceso.PCB
         pcb.freeMemory();
 
-        // Add back to free blocks
+        // Agregar de nuevo a bloques gratuitos
         freeBlocks.put(block.start, block);
 
-        // Coalesce adjacent free blocks
+        // Fusionar bloques libres adyacentes
         coalesce();
 
-        System.out.println("Freed PID " + pid +
-                " → [" + block.start + "-" + (block.start + block.size - 1) + "]");
+        System.out.println("Liberado PID " + pid +
+        " → [" + block.start + "-" + (block.start + block.size - 1) + "]");
     }
 
     private void coalesce() {
@@ -104,9 +104,9 @@ public class MemoryManager {
             if (current == null) {
                 current = new MemoryBlock(block.start, block.size);
             } else {
-                // Check if adjacent
+                // Verificar si es adyacente
                 if (current.start + current.size == block.start) {
-                    current.size += block.size; // Merge
+                    current.size += block.size; // une
                 } else {
                     merged.put(current.start, current);
                     current = new MemoryBlock(block.start, block.size);
@@ -122,16 +122,16 @@ public class MemoryManager {
     }
 
     public void printMemoryMap() {
-        System.out.println("\n--- Memory.Memory Map ---");
-        System.out.println("Allocated:");
+        System.out.println("\n--- Mapa de Memoria ---");
+        System.out.println("Asignado:");
         for (var entry : allocated.entrySet()) {
             MemoryBlock b = entry.getValue();
             System.out.println("  PID " + entry.getKey() + ": [" + b.start + "-" + (b.start + b.size - 1) + "]");
         }
-        System.out.println("Free:");
+        System.out.println("Libre:");
         for (var entry : freeBlocks.entrySet()) {
             MemoryBlock b = entry.getValue();
-            System.out.println("  [" + b.start + "-" + (b.start + b.size - 1) + "] (" + b.size + " units)");
+            System.out.println("  [" + b.start + "-" + (b.start + b.size - 1) + "] (" + b.size + " unidades)");
         }
         System.out.println("------------------\n");
     }

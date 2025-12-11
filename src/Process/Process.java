@@ -34,7 +34,7 @@ public class Process {
     }
 
     public boolean shouldRequestIO() {
-        // Request I/O after half the burst time has been consumed
+        // Solicitar E/S después de que se haya consumido la mitad del tiempo de ráfaga
         if (!hasIORequest()) return false;
 
         int consumed = pcb.getBurstTime() - pcb.getRemainingTime();

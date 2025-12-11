@@ -19,7 +19,7 @@ public class IOManager {
         devices.put("NETWORK", new IODevice("NETWORK"));
     }
 
-    // Wrapper to keep track of both request and process
+    // Envoltorio para realizar un seguimiento tanto de la solicitud como del proceso
     private static class IORequestWrapper {
         IORequest request;
         Process process;
@@ -33,25 +33,25 @@ public class IOManager {
     public void submitRequest(IORequest request, Process process) {
         pendingRequests.add(new IORequestWrapper(request, process));
         waitingProcesses.put(request.getPid(), process);
-        System.out.println("✓ PID " + request.getPid() + " submitted I/O request: " +
-                request.getOperation() + " on " + request.getDeviceName());
+        System.out.println("✓ PID " + request.getPid() + " envió solicitud de E/S: " +
+                request.getOperation() + " en " + request.getDeviceName());
     }
 
     public void processIO() {
-        // Tick all devices (advance I/O operations)
+        // Marcar todos los dispositivos (operaciones de E/S avanzadas)
         for (IODevice device : devices.values()) {
             IORequest completed = device.tick();
             if (completed != null) {
-                // I/O completed, move process back to ready
+                // E/S completada, mover el proceso de nuevo al estado listo
                 Process p = waitingProcesses.remove(completed.getPid());
                 if (p != null) {
                     completedIO.add(p);
-                    System.out.println("✓ I/O completed for PID " + completed.getPid());
+                    System.out.println("✓ E/S completada para el PID " + completed.getPid());
                 }
             }
         }
 
-        // Assign pending requests to free devices
+        // Asignar solicitudes pendientes a dispositivos libres
         Iterator<IORequestWrapper> it = pendingRequests.iterator();
         while (it.hasNext()) {
             IORequestWrapper wrapper = it.next();

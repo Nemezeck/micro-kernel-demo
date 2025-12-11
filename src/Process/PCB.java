@@ -14,9 +14,9 @@ public class PCB {
     private int memoryRequired;
     private int memoryBase = -1;
 
-    // Metrics tracking
+    // Seguimiento de métricas
     private int completionTime = -1;
-    private int firstRunTime = -1;  // For response time
+    private int firstRunTime = -1;  // Para el tiempo de respuesta
 
     public PCB(int pid, int arrivalTime, int burstTime, int memReq) {
         this.pid = pid;
@@ -37,29 +37,29 @@ public class PCB {
     public int getCompletionTime() { return completionTime; }
     public ProcessState getState() { return state; }
 
-    // Memory.Memory management
+    // Memoria.Gestión de la memoria
     public void allocateMemory(int base) { this.memoryBase = base; }
     public void freeMemory() { this.memoryBase = -1; }
     public boolean hasMemory() { return memoryBase != -1; }
 
-    // Execution
+    // Ejecución
     public void reduceTime(int q) {
         remainingTime = Math.max(0, remainingTime - q);
     }
 
-    // Track first run for response time
+    // Realizar un seguimiento de la primera ejecución para el tiempo de respuesta
     public void markFirstRun(int currentTime) {
         if (firstRunTime == -1) {
             firstRunTime = currentTime;
         }
     }
 
-    // Mark completion
+    // Marcar finalización
     public void markCompletion(int currentTime) {
         this.completionTime = currentTime;
     }
 
-    // Calculate metrics (using burstTime!)
+    // Calcular métricas (¡usando burstTime!)
     public int getTurnaroundTime() {
         if (completionTime == -1) return -1;
         return completionTime - arrivalTime;
@@ -67,7 +67,7 @@ public class PCB {
 
     public int getWaitingTime() {
         if (completionTime == -1) return -1;
-        return getTurnaroundTime() - burstTime;  // HERE'S WHERE burstTime IS USED!
+        return getTurnaroundTime() - burstTime;  // ¡AQUÍ ES DONDE SE UTILIZA burstTime!
     }
 
     public int getResponseTime() {
@@ -81,12 +81,12 @@ public class PCB {
     }
 
     public void printMetrics() {
-        System.out.println("PID " + pid + " Metrics:");
-        System.out.println("  Burst Time: " + burstTime);
-        System.out.println("  Arrival Time: " + arrivalTime);
-        System.out.println("  Completion Time: " + completionTime);
-        System.out.println("  Turnaround Time: " + getTurnaroundTime());
-        System.out.println("  Waiting Time: " + getWaitingTime());
-        System.out.println("  Response Time: " + getResponseTime());
+        System.out.println("PID " + pid + " Métricas:");
+        System.out.println("  Tiempo de Ráfaga: " + burstTime);
+        System.out.println("  Tiempo de Llegada: " + arrivalTime);
+        System.out.println("  Tiempo de Finalización: " + completionTime);
+        System.out.println("  Tiempo de Retorno: " + getTurnaroundTime());
+        System.out.println("  Tiempo de Espera: " + getWaitingTime());
+        System.out.println("  Tiempo de Respuesta: " + getResponseTime());
     }
 }
