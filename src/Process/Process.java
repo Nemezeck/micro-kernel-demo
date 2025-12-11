@@ -8,6 +8,7 @@ import java.util.List;
 public class Process {
     private PCB pcb;
     private List<IORequest> ioRequests = new ArrayList<>();
+    private int ioRequestIndex = 0;
 
     public Process(int pid, int arrival, int burst, int memReq) {
         this.pcb = new PCB(pid, arrival, burst, memReq);
@@ -24,11 +25,21 @@ public class Process {
     }
 
     public boolean hasIORequest() {
-        return !ioRequests.isEmpty();
+        return ioRequestIndex < ioRequests.size();
     }
 
     public IORequest getNextIORequest() {
-        if (ioRequests.isEmpty()) return null;
-        return ioRequests.remove(0);
+        if (!hasIORequest()) return null;
+        return ioRequests.get(ioRequestIndex++);
+    }
+
+    public boolean shouldRequestIO() {
+        // Request I/O after half the burst time has been consumed
+        if (!hasIORequest()) return false;
+
+        int consumed = pcb.getBurstTime() - pcb.getRemainingTime();
+        int halfBurst = pcb.getBurstTime() / 2;
+
+        return consumed >= halfBurst && ioRequestIndex == 0;
     }
 }

@@ -1,5 +1,6 @@
 package Dispatcher;
 
+import IO.IORequest;
 import Manager.IOManager;
 import Manager.MemoryManager;
 import Process.Process;
@@ -46,15 +47,29 @@ public class Dispatcher {
         }
     }
 
+    private void handleIOCompletions() {
+        List<Process> completed = ioManager.getCompletedIO();
+        for (Process p : completed) {
+            p.getPCB().transitionTo(PCB.ProcessState.READY);
+            scheduler.requeue(p);
+        }
+    }
+
     public void runFCFS() {
         currentTime = 0;
 
-        while (scheduler.hasProcess() || !waitingForMemory.isEmpty()) {
+        System.out.println("\n⏱️  Starting FCFS Scheduling...\n");
+
+        while (scheduler.hasProcess() || !waitingForMemory.isEmpty() || ioManager.hasPendingIO()) {
+
+            // Process any completed I/O operations
+            ioManager.processIO();
+            handleIOCompletions();
 
             tryUnblockProcesses();
 
             if (!scheduler.hasProcess()) {
-                currentTime++; // Idle CPU
+                currentTime++; // CPU idle
                 continue;
             }
 
@@ -65,8 +80,7 @@ public class Dispatcher {
             if (!pcb.hasMemory()) {
                 boolean ok = memory.allocate(pcb, pcb.getMemoryRequired());
                 if (!ok) {
-                    System.out.println("PID " + pcb.getPid()
-                            + " waiting for memory. Moving to WAITING state.");
+                    System.out.println("⚠️  PID " + pcb.getPid() + " waiting for memory");
                     pcb.transitionTo(PCB.ProcessState.WAITING);
                     waitingForMemory.add(p);
                     continue;
@@ -74,17 +88,36 @@ public class Dispatcher {
             }
 
             pcb.transitionTo(PCB.ProcessState.RUNNING);
-            pcb.markFirstRun(currentTime); // Track first run time
+            pcb.markFirstRun(currentTime);
 
+            // Check if process should request I/O midway
+            if (p.shouldRequestIO() && p.hasIORequest()) {
+                // Run until I/O request point
+                int timeUntilIO = pcb.getRemainingTime() / 2;
+                p.runFor(timeUntilIO);
+                currentTime += timeUntilIO;
+
+                System.out.println("🔄 PID " + pcb.getPid() + " ran for " + timeUntilIO +
+                        " (time now: " + currentTime + ")");
+
+                // Submit I/O request
+                IORequest ioReq = p.getNextIORequest();
+                ioManager.submitRequest(ioReq, p);
+                pcb.transitionTo(PCB.ProcessState.WAITING);
+
+                continue; // Process will be rescheduled after I/O
+            }
+
+            // Run to completion
             int time = pcb.getRemainingTime();
             p.runFor(time);
-            currentTime += time; // Advance clock
+            currentTime += time;
 
-            System.out.println("PID " + pcb.getPid() + " ran for " + time +
+            System.out.println("✓ PID " + pcb.getPid() + " ran for " + time +
                     " (time now: " + currentTime + ")");
 
             pcb.transitionTo(PCB.ProcessState.TERMINATED);
-            pcb.markCompletion(currentTime); // Track completion time
+            pcb.markCompletion(currentTime);
             memory.free(pcb);
 
             completedProcesses.add(p);
@@ -97,23 +130,29 @@ public class Dispatcher {
     public void runRoundRobin(RoundRobinScheduler rr) {
         currentTime = 0;
 
-        while (rr.hasProcess() || !waitingForMemory.isEmpty()) {
+        System.out.println("\n⏱️  Starting Round Robin Scheduling (Quantum: " + rr.getQuantum() + ")...\n");
+
+        while (rr.hasProcess() || !waitingForMemory.isEmpty() || ioManager.hasPendingIO()) {
+
+            // Process I/O completions
+            ioManager.processIO();
+            handleIOCompletions();
 
             tryUnblockProcesses();
 
             if (!rr.hasProcess()) {
-                currentTime++; // Idle CPU
+                currentTime++; // CPU idle
                 continue;
             }
 
             Process p = rr.getNextProcess();
             PCB pcb = p.getPCB();
 
+            // Memory allocation
             if (!pcb.hasMemory()) {
                 boolean ok = memory.allocate(pcb, pcb.getMemoryRequired());
                 if (!ok) {
-                    System.out.println("PID " + pcb.getPid()
-                            + " waiting for memory. Moving to WAITING.");
+                    System.out.println("⚠️  PID " + pcb.getPid() + " waiting for memory");
                     pcb.transitionTo(PCB.ProcessState.WAITING);
                     waitingForMemory.add(p);
                     continue;
@@ -121,22 +160,44 @@ public class Dispatcher {
             }
 
             pcb.transitionTo(PCB.ProcessState.RUNNING);
-            pcb.markFirstRun(currentTime); // Track first run
+            pcb.markFirstRun(currentTime);
 
             int slice = Math.min(rr.getQuantum(), pcb.getRemainingTime());
+
+            // Check if should request I/O during this slice
+            if (p.shouldRequestIO() && p.hasIORequest()) {
+                // Run partial slice before I/O
+                int timeBeforeIO = Math.min(slice, 1); // Use 1 time unit before I/O
+                p.runFor(timeBeforeIO);
+                currentTime += timeBeforeIO;
+
+                System.out.println("🔄 PID " + pcb.getPid() + " ran for " + timeBeforeIO +
+                        " before I/O (time now: " + currentTime + ")");
+
+                // Submit I/O request
+                IORequest ioReq = p.getNextIORequest();
+                ioManager.submitRequest(ioReq, p);
+                pcb.transitionTo(PCB.ProcessState.WAITING);
+
+                continue;
+            }
+
+            // Normal execution
             p.runFor(slice);
-            currentTime += slice; // Advance clock
+            currentTime += slice;
 
-            System.out.println("PID " + pcb.getPid() + " ran for slice " + slice +
-                    " (time now: " + currentTime + ")");
+            System.out.println("✓ PID " + pcb.getPid() + " ran for slice " + slice +
+                    " (time now: " + currentTime + ", remaining: " + pcb.getRemainingTime() + ")");
 
+            // Check if finished
             if (pcb.getRemainingTime() == 0) {
                 pcb.transitionTo(PCB.ProcessState.TERMINATED);
-                pcb.markCompletion(currentTime); // Track completion
+                pcb.markCompletion(currentTime);
                 memory.free(pcb);
                 completedProcesses.add(p);
                 tryUnblockProcesses();
             } else {
+                // Not finished, requeue
                 pcb.transitionTo(PCB.ProcessState.READY);
                 rr.requeue(p);
             }
@@ -146,9 +207,11 @@ public class Dispatcher {
     }
 
     private void printStatistics() {
-        System.out.println("\n========== SCHEDULING STATISTICS ==========");
+        System.out.println("\n" + "=".repeat(70));
+        System.out.println("                     SCHEDULING STATISTICS");
+        System.out.println("=".repeat(70));
         System.out.println("PID\tArrival\tBurst\tCompletion\tTurnaround\tWaiting\tResponse");
-        System.out.println("---\t-------\t-----\t----------\t----------\t-------\t--------");
+        System.out.println("-".repeat(70));
 
         double avgTurnaround = 0;
         double avgWaiting = 0;
@@ -173,10 +236,10 @@ public class Dispatcher {
 
         int n = completedProcesses.size();
         if (n > 0) {
-            System.out.println("-------------------------------------------");
+            System.out.println("-".repeat(70));
             System.out.printf("Average:\t\t\t\t%.2f\t\t%.2f\t%.2f\n",
                     avgTurnaround / n, avgWaiting / n, avgResponse / n);
         }
-        System.out.println("===========================================\n");
+        System.out.println("=".repeat(70) + "\n");
     }
 }
